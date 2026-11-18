@@ -1,0 +1,13 @@
+# Core Data & Configuration
+pandas==2.2.3
+pyarrow==17.0.0
+python-dotenv==1.0.1
+pyyaml==6.0.2
+
+# Database & Validation
+SQLAlchemy==2.0.35
+psycopg2-binary==2.9.9
+pydantic==2.9.2
+
+# Testing & Code Quality
+pytest==8.3.3
