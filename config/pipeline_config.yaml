@@ -1,0 +1,52 @@
+project:
+  name: "RetailPulse 2.0"
+  version: "2.0.0"
+
+paths:
+  raw_dir: "data/raw"
+  bronze_dir: "data/bronze"
+  silver_dir: "data/silver"
+  gold_dir: "data/gold"
+  quarantine_dir: "data/quarantine"
+  log_dir: "logs"
+
+sources:
+  csv_files:
+    orders:
+      file: "olist_orders_dataset.csv"
+      primary_key: "order_id"
+      watermark_col: "order_purchase_timestamp"
+    order_items:
+      file: "olist_order_items_dataset.csv"
+      primary_key: ["order_id", "order_item_id"]
+      watermark_col: "shipping_limit_date"
+    order_reviews:
+      file: "olist_order_reviews_dataset.csv"
+      primary_key: "review_id"
+      watermark_col: "review_creation_date"
+    geolocation:
+      file: "olist_geolocation_dataset.csv"
+      primary_key: "geolocation_zip_code_prefix"
+      watermark_col: null
+
+  postgres_oltp:
+    schema: "source_oltp"
+    tables:
+      customers:
+        source_csv: "olist_customers_dataset.csv"
+        primary_key: "customer_id"
+      products:
+        source_csv: "olist_products_dataset.csv"
+        primary_key: "product_id"
+      sellers:
+        source_csv: "olist_sellers_dataset.csv"
+        primary_key: "seller_id"
+      category_translation:
+        source_csv: "product_category_name_translation.csv"
+        primary_key: "product_category_name"
+
+  rest_api:
+    payments:
+      source_csv: "olist_order_payments_dataset.csv"
+      primary_key: ["order_id", "payment_sequential"]
+      endpoint: "/api/v1/payments"

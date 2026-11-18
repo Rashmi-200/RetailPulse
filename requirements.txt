@@ -9,5 +9,10 @@ SQLAlchemy==2.0.35
 psycopg2-binary==2.9.9
 pydantic==2.9.2
 
+# Simulated REST API Source
+fastapi==0.115.0
+uvicorn==0.31.1
+requests==2.32.3
+
 # Testing & Code Quality
 pytest==8.3.3
