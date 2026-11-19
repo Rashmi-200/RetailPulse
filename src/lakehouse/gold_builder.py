@@ -100,7 +100,7 @@ class GoldStarSchemaBuilder:
         scd_versions["customer_sk"] = np.arange(1, len(scd_versions) + 1)
         scd_versions["effective_from"] = scd_versions["effective_ts"]
         next_effective = scd_versions.groupby("customer_unique_id")["effective_from"].shift(-1)
-        scd_versions["effective_to"] = next_effective.fillna(pd.Timestamp("2099-12-31 23:59:59"))
+        scd_versions["effective_to"] = next_effective  # Half-open [effective_from, effective_to); NULL for current
         scd_versions["is_current"] = next_effective.isna()
 
         cols = [

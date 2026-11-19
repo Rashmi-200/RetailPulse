@@ -1,108 +1,112 @@
 import hashlib
 import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-from src.observability.tracker import ObservabilityTracker, utc_now
+from src.observability.tracker import ObservabilityTracker
 from src.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-INTERNAL_META_COLS = {"_batch_id", "_ingested_at", "_source_system"}
-
 
 @dataclass
-class SchemaCheckResult:
+class SchemaEvolutionResult:
     dataset_name: str
     layer: str
     version_number: int
+    schema_hash: str
     change_type: str
     is_breaking: bool
     diff_summary: Dict[str, Any]
 
 
 class SchemaEvolutionRegistry:
-    """Tracks dataset schema versions, detects drift, and blocks breaking changes."""
+    """Tracks canonical dataset schemas, detects breaking vs non-breaking drift, and records history."""
 
     def __init__(self, engine: Engine, tracker: ObservabilityTracker):
         self.engine = engine
         self.tracker = tracker
 
     @staticmethod
-    def extract_schema_definition(df: pd.DataFrame) -> Dict[str, str]:
-        return {
-            col: str(dtype)
-            for col, dtype in df.dtypes.items()
-            if col not in INTERNAL_META_COLS
-        }
+    def extract_canonical_schema(df: pd.DataFrame) -> Dict[str, str]:
+        return {col: str(df[col].dtype) for col in sorted(df.columns)}
 
     @staticmethod
     def compute_schema_hash(schema_def: Dict[str, str]) -> str:
         canonical = json.dumps(schema_def, sort_keys=True)
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
-    def _get_latest_version(self, dataset_name: str, layer: str) -> Optional[Dict[str, Any]]:
-        query = text(
-            """
-            SELECT version_number, schema_hash, schema_definition
-            FROM meta.schema_versions
-            WHERE dataset_name = :dataset_name AND layer = :layer
-            ORDER BY version_number DESC
-            LIMIT 1;
-            """
-        )
-        with self.engine.connect() as conn:
-            row = conn.execute(query, {"dataset_name": dataset_name, "layer": layer}).fetchone()
-        if not row:
-            return None
-        schema_def = row[2] if isinstance(row[2], dict) else json.loads(row[2])
-        return {"version_number": row[0], "schema_hash": row[1], "schema_definition": schema_def}
+    @staticmethod
+    def _is_compatible_type_shift(old_dtype: str, new_dtype: str) -> bool:
+        if old_dtype == new_dtype:
+            return True
+        numeric_widening = {("int32", "int64"), ("int64", "float64"), ("float32", "float64")}
+        return (old_dtype, new_dtype) in numeric_widening
 
     def check_and_register(
         self,
         df: pd.DataFrame,
         dataset_name: str,
         layer: str,
-        required_columns: List[str],
-        batch_id: Optional[str] = None,
+        required_columns: Optional[List[str]] = None,
         run_id: Optional[str] = None,
-    ) -> SchemaCheckResult:
-        current_schema = self.extract_schema_definition(df)
-        current_hash = self.compute_schema_hash(current_schema)
-        latest = self._get_latest_version(dataset_name, layer)
+    ) -> SchemaEvolutionResult:
+        required_columns = required_columns or []
+        curr_schema = self.extract_canonical_schema(df)
+        curr_hash = self.compute_schema_hash(curr_schema)
 
-        # Case 1: First time registering this schema
+        with self.engine.connect() as conn:
+            latest = conn.execute(
+                text(
+                    """
+                    SELECT version_number, schema_hash, schema_definition
+                    FROM meta.schema_versions
+                    WHERE dataset_name = :dataset_name AND layer = :layer AND is_breaking = FALSE
+                    ORDER BY version_number DESC
+                    LIMIT 1;
+                    """
+                ),
+                {"dataset_name": dataset_name, "layer": layer},
+            ).mappings().fetchone()
+
+            max_v = conn.execute(
+                text(
+                    """
+                    SELECT COALESCE(MAX(version_number), 0)
+                    FROM meta.schema_versions
+                    WHERE dataset_name = :dataset_name AND layer = :layer;
+                    """
+                ),
+                {"dataset_name": dataset_name, "layer": layer},
+            ).scalar()
+
         if latest is None:
-            self._insert_version(dataset_name, layer, 1, current_hash, current_schema, "initial", False, {})
-            logger.info(f"[SCHEMA REGISTERED] {layer}.{dataset_name} v1 ({len(current_schema)} cols)")
-            return SchemaCheckResult(dataset_name, layer, 1, "initial", False, {})
+            self._insert_version(dataset_name, layer, 1, curr_hash, curr_schema, "initial", False, {"status": "baseline"})
+            logger.info(f"[SCHEMA REGISTERED] {layer}.{dataset_name} v1 ({len(curr_schema)} cols)")
+            return SchemaEvolutionResult(dataset_name, layer, 1, curr_hash, "initial", False, {"status": "baseline"})
 
-        # Case 2: Identical schema
-        if latest["schema_hash"] == current_hash:
-            return SchemaCheckResult(dataset_name, layer, latest["version_number"], "unchanged", False, {})
+        if latest["schema_hash"] == curr_hash:
+            return SchemaEvolutionResult(
+                dataset_name, layer, int(latest["version_number"]), curr_hash, "unchanged", False, {}
+            )
 
-        # Case 3: Schema drift detected -> classify breaking vs non-breaking
         prev_schema: Dict[str, str] = latest["schema_definition"]
-        prev_cols = set(prev_schema.keys())
-        curr_cols = set(current_schema.keys())
+        added_cols = sorted(list(set(curr_schema.keys()) - set(prev_schema.keys())))
+        removed_cols = sorted(list(set(prev_schema.keys()) - set(curr_schema.keys())))
+        removed_required = [c for c in removed_cols if c in required_columns]
 
-        added_cols = sorted(list(curr_cols - prev_cols))
-        removed_cols = sorted(list(prev_cols - curr_cols))
-        removed_required = sorted([c for c in removed_cols if c in required_columns])
+        type_changes: Dict[str, Dict[str, str]] = {}
+        for col in set(curr_schema.keys()).intersection(set(prev_schema.keys())):
+            if not self._is_compatible_type_shift(prev_schema[col], curr_schema[col]):
+                type_changes[col] = {"from": prev_schema[col], "to": curr_schema[col]}
 
-        type_changes = {}
-        for col in prev_cols.intersection(curr_cols):
-            if prev_schema[col] != current_schema[col]:
-                # Allow benign int64 <-> float64 widening due to NaNs, flag incompatible shifts
-                numeric_types = {"int64", "float64", "Int64", "Float64"}
-                if not ({prev_schema[col], current_schema[col]}.issubset(numeric_types)):
-                    type_changes[col] = {"from": prev_schema[col], "to": current_schema[col]}
-
-        is_breaking = bool(removed_required or type_changes)
+        is_breaking = bool(removed_cols or type_changes)
         change_type = "breaking_drift" if is_breaking else "non_breaking_evolution"
+        next_version = int(max_v) + 1
         diff_summary = {
             "added_columns": added_cols,
             "removed_columns": removed_cols,
@@ -110,10 +114,7 @@ class SchemaEvolutionRegistry:
             "type_changes": type_changes,
         }
 
-        new_version = latest["version_number"] + 1
-        self._insert_version(
-            dataset_name, layer, new_version, current_hash, current_schema, change_type, is_breaking, diff_summary
-        )
+        self._insert_version(dataset_name, layer, next_version, curr_hash, curr_schema, change_type, is_breaking, diff_summary)
 
         severity = "CRITICAL" if is_breaking else "WARNING"
         self.tracker.create_incident(
@@ -121,23 +122,20 @@ class SchemaEvolutionRegistry:
             severity=severity,
             dataset_name=dataset_name,
             layer=layer,
-            batch_id=batch_id,
             run_id=run_id,
-            evidence_refs={"version": new_version, "diff": diff_summary},
             recommended_action=(
-                "Block downstream Silver load and fix source schema."
+                f"Block promotion and inspect schema drift on {layer}.{dataset_name}: {json.dumps(diff_summary)}"
                 if is_breaking
-                else "Review newly added optional columns and update data contract."
+                else f"Review additive schema evolution v{next_version} on {layer}.{dataset_name}: {added_cols}"
             ),
         )
 
         if is_breaking:
-            raise ValueError(
-                f"Breaking schema drift detected on {layer}.{dataset_name} (v{new_version}): {diff_summary}"
-            )
+            logger.error(f"[SCHEMA DRIFT BLOCKED] Breaking drift on {layer}.{dataset_name}: {diff_summary}")
+            raise ValueError(f"Breaking schema drift detected on {layer}.{dataset_name}: {diff_summary}")
 
-        logger.warning(f"[SCHEMA EVOLUTION] Non-breaking drift on {layer}.{dataset_name} v{new_version}: {diff_summary}")
-        return SchemaCheckResult(dataset_name, layer, new_version, change_type, False, diff_summary)
+        logger.warning(f"[SCHEMA EVOLUTION] Non-breaking drift on {layer}.{dataset_name} v{next_version}: {diff_summary}")
+        return SchemaEvolutionResult(dataset_name, layer, next_version, curr_hash, change_type, False, diff_summary)
 
     def _insert_version(
         self,
@@ -173,6 +171,6 @@ class SchemaEvolutionRegistry:
                     "change_type": change_type,
                     "is_breaking": is_breaking,
                     "diff_summary": json.dumps(diff_summary),
-                    "registered_at": utc_now(),
+                    "registered_at": datetime.now(timezone.utc),
                 },
             )
