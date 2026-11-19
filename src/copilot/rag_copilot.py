@@ -115,7 +115,7 @@ class HybridDataEngineeringCopilot:
 
         results = []
         for score, idx in zip(scores[0], indices[0]):
-            if idx >= 0 and score > 0.05:
+            if idx >= 0 and score >= 0.13:
                 results.append(
                     {
                         "source": self.documents[idx]["source"],
@@ -262,3 +262,28 @@ class HybridDataEngineeringCopilot:
             "sql_evidence": sql_evidence,
             "rag_sources": [h["source"] for h in rag_hits],
         }
+
+
+    def get_index_metadata(self) -> Dict[str, Any]:
+        if self.index is None:
+            self.build_knowledge_index()
+        actual_dim = int(self.index.d) if self.index is not None else 0
+        vocab_size = len(getattr(self.vectorizer, 'vocabulary_', {}))
+        assert actual_dim == vocab_size, f'FAISS index dim {actual_dim} != vectorizer dim {vocab_size}'
+        return {
+            'embedding_model': 'scikit-learn TfidfVectorizer (L2-normalized dense projection)',
+            'configured_max_features': 512,
+            'actual_embedding_dim': actual_dim,
+            'indexed_document_count': len(self.documents),
+            'dimension_verified': True,
+        }
+
+    @staticmethod
+    def validate_readonly_sql(sql_text: str) -> bool:
+        normalized = ' '.join(sql_text.strip().upper().split())
+        forbidden = ('INSERT ', 'UPDATE ', 'DELETE ', 'DROP ', 'ALTER ', 'TRUNCATE ', 'GRANT ', 'REVOKE ', 'CREATE ')
+        if not normalized.startswith('SELECT '):
+            raise PermissionError('Only read-only SELECT statements are permitted in Copilot SQL path.')
+        if any(kw in normalized for kw in forbidden):
+            raise PermissionError(f'Forbidden write/DDL keyword detected in Copilot SQL: {sql_text}')
+        return True

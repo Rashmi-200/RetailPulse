@@ -15,7 +15,7 @@ from src.utils.config_loader import load_yaml_config
 app = FastAPI(
     title="RetailPulse AI — Data Engineering & Observability Control Plane",
     version="2.0.0",
-    description="Backend-first REST API for pipeline observability, lineage, RCA, safe recovery, forecasting, and AI Copilot.",
+    description="Backend-first REST API for a Multi-Component Data Engineering Platform built on a Three-Layer Medallion Lakehouse (Bronze, Silver, Gold).",
 )
 
 engine = get_engine()
