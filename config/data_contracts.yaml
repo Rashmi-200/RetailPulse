@@ -1,0 +1,135 @@
+contracts:
+  orders:
+    primary_key: ["order_id"]
+    required_columns:
+      - order_id
+      - customer_id
+      - order_status
+      - order_purchase_timestamp
+    not_null:
+      - order_id
+      - customer_id
+      - order_status
+      - order_purchase_timestamp
+    allowed_values:
+      order_status:
+        - delivered
+        - shipped
+        - canceled
+        - unavailable
+        - invoiced
+        - processing
+        - created
+        - approved
+
+  order_items:
+    primary_key: ["order_id", "order_item_id"]
+    required_columns:
+      - order_id
+      - order_item_id
+      - product_id
+      - seller_id
+      - price
+      - freight_value
+    not_null:
+      - order_id
+      - order_item_id
+      - product_id
+      - seller_id
+      - price
+    numeric_ranges:
+      price: { min: 0.01, max: 50000.0 }
+      freight_value: { min: 0.0, max: 10000.0 }
+
+  payments:
+    primary_key: ["order_id", "payment_sequential"]
+    required_columns:
+      - order_id
+      - payment_sequential
+      - payment_type
+      - payment_installments
+      - payment_value
+    not_null:
+      - order_id
+      - payment_sequential
+      - payment_type
+      - payment_value
+    numeric_ranges:
+      payment_value: { min: 0.0, max: 100000.0 }
+      payment_installments: { min: 0, max: 48 }
+    allowed_values:
+      payment_type:
+        - credit_card
+        - boleto
+        - voucher
+        - debit_card
+        - not_defined
+
+  customers:
+    primary_key: ["customer_id"]
+    required_columns:
+      - customer_id
+      - customer_unique_id
+      - customer_zip_code_prefix
+      - customer_city
+      - customer_state
+    not_null:
+      - customer_id
+      - customer_unique_id
+      - customer_state
+
+  products:
+    primary_key: ["product_id"]
+    required_columns:
+      - product_id
+      - product_category_name
+    not_null:
+      - product_id
+    numeric_ranges:
+      product_weight_g: { min: 0.0, max: 100000.0 }
+
+  sellers:
+    primary_key: ["seller_id"]
+    required_columns:
+      - seller_id
+      - seller_zip_code_prefix
+      - seller_city
+      - seller_state
+    not_null:
+      - seller_id
+      - seller_state
+
+  order_reviews:
+    primary_key: ["review_id"]
+    required_columns:
+      - review_id
+      - order_id
+      - review_score
+    not_null:
+      - review_id
+      - order_id
+      - review_score
+    numeric_ranges:
+      review_score: { min: 1, max: 5 }
+
+  geolocation:
+    primary_key: []
+    required_columns:
+      - geolocation_zip_code_prefix
+      - geolocation_lat
+      - geolocation_lng
+      - geolocation_city
+      - geolocation_state
+    not_null:
+      - geolocation_zip_code_prefix
+      - geolocation_lat
+      - geolocation_lng
+
+  category_translation:
+    primary_key: ["product_category_name"]
+    required_columns:
+      - product_category_name
+      - product_category_name_english
+    not_null:
+      - product_category_name
+      - product_category_name_english
