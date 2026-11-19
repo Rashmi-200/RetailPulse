@@ -1,0 +1,46 @@
+policies:
+  TRANSIENT_API_TIMEOUT:
+    category: "TRANSIENT_INFRA"
+    auto_retry_allowed: true
+    max_retries: 3
+    backoff_seconds: 2
+    recommended_action: "RETRY_WITH_EXPONENTIAL_BACKOFF"
+    requires_human_approval: false
+
+  DB_CONNECTION_ERROR:
+    category: "TRANSIENT_INFRA"
+    auto_retry_allowed: true
+    max_retries: 3
+    backoff_seconds: 3
+    recommended_action: "RETRY_AFTER_HEALTH_CHECK"
+    requires_human_approval: false
+
+  SCHEMA_BREAKING:
+    category: "SCHEMA_DRIFT"
+    auto_retry_allowed: false
+    recommended_action: "BLOCK_AND_NOTIFY_PRODUCER"
+    requires_human_approval: true
+
+  DUPLICATE_KEY:
+    category: "DATA_CONTRACT_VIOLATION"
+    auto_retry_allowed: false
+    recommended_action: "DEDUPLICATE_AND_ARCHIVE_QUARANTINE"
+    requires_human_approval: true
+
+  MISSING_REQUIRED_FIELD:
+    category: "DATA_CONTRACT_VIOLATION"
+    auto_retry_allowed: false
+    recommended_action: "SOURCE_PATCH_AND_IDEMPOTENT_REPLAY"
+    requires_human_approval: true
+
+  TYPE_MISMATCH:
+    category: "DATA_CONTRACT_VIOLATION"
+    auto_retry_allowed: false
+    recommended_action: "SANITIZE_CAST_AND_REPLAY"
+    requires_human_approval: true
+
+  RANGE_VIOLATION:
+    category: "DATA_CONTRACT_VIOLATION"
+    auto_retry_allowed: false
+    recommended_action: "MANUAL_REVIEW_AND_REPLAY"
+    requires_human_approval: true
