@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 import numpy as np
@@ -54,15 +55,80 @@ def bootstrap_isolated_ci() -> None:
             );
         """))
 
+        for i in range(1, 13):
+            conn.execute(
+                text("""
+                    INSERT INTO meta.pipeline_runs (run_id, pipeline_name, trigger_type, status, dq_status, started_at)
+                    VALUES (:rid, 'ci_medallion_seed', 'ci', 'SUCCESS', 'PASSED', NOW() - (:offset || ' hours')::INTERVAL)
+                    ON CONFLICT (run_id) DO NOTHING;
+                """),
+                {"rid": f"ci_seed_run_{i:03d}", "offset": str(13 - i)},
+            )
+
         conn.execute(text("""
-            INSERT INTO meta.pipeline_runs (run_id, pipeline_name, trigger_type, status, dq_status, started_at)
-            VALUES ('ci_seed_run_001', 'ci_medallion_seed', 'ci', 'SUCCESS', 'PASSED', NOW())
-            ON CONFLICT (run_id) DO NOTHING;
-        """))
-        conn.execute(text("""
-            INSERT INTO meta.incidents (incident_id, run_id, incident_type, severity, dataset_name, layer, status, detected_at)
-            VALUES ('ci_seed_inc_001', 'ci_seed_run_001', 'DATA_CONTRACT_VIOLATION', 'HIGH', 'orders', 'silver', 'OPEN', NOW())
+            INSERT INTO meta.incidents (incident_id, batch_id, run_id, incident_type, severity, dataset_name, layer, status, detected_at)
+            VALUES ('ci_seed_inc_001', 'ci_batch_reviews_001', 'ci_seed_run_001', 'DATA_CONTRACT_VIOLATION', 'HIGH', 'order_reviews', 'silver', 'OPEN', NOW())
             ON CONFLICT (incident_id) DO NOTHING;
+        """))
+
+        dim_scores = json.dumps({
+            "completeness": 99.80,
+            "uniqueness": 99.66,
+            "validity": 99.73,
+            "consistency": 99.73,
+            "timeliness": 99.73,
+            "accuracy": 99.73,
+        })
+        rule_results = json.dumps([
+            {"rule": "review_score_range", "passed": False, "failed_rows": 814},
+        ])
+        conn.execute(
+            text("""
+                INSERT INTO meta.quality_results (
+                    batch_id, run_id, dataset_name, layer, total_records, valid_records,
+                    invalid_records, duplicate_records, overall_score, dimension_scores, rule_results, evaluated_at
+                )
+                SELECT 'ci_batch_reviews_001', 'ci_seed_run_001', 'order_reviews', 'silver',
+                       99224, 98410, 814, 120, 99.73, CAST(:dims AS JSONB), CAST(:rules AS JSONB), NOW()
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM meta.quality_results WHERE batch_id = 'ci_batch_reviews_001'
+                );
+            """),
+            {"dims": dim_scores, "rules": rule_results},
+        )
+
+        conn.execute(text("""
+            INSERT INTO quarantine.quarantined_records (
+                quarantine_id, batch_id, run_id, dataset_name, record_key,
+                error_category, rejection_reason, raw_payload, recovery_status, quarantined_at
+            )
+            SELECT
+                'ci_quar_rev_' || LPAD(gs::TEXT, 4, '0'),
+                'ci_batch_reviews_001',
+                'ci_seed_run_001',
+                'order_reviews',
+                'rev_bad_' || gs::TEXT,
+                'CONTRACT_VIOLATION',
+                'Invalid review_score or duplicate review_id',
+                jsonb_build_object('review_id', 'rev_bad_' || gs::TEXT, 'review_score', 99),
+                'QUARANTINED',
+                NOW()
+            FROM generate_series(1, 814) AS gs
+            ON CONFLICT (quarantine_id) DO NOTHING;
+        """))
+
+        conn.execute(text("""
+            INSERT INTO meta.anomaly_alerts (
+                batch_id, run_id, dataset_name, metric_name, detector_type,
+                observed_value, expected_range, anomaly_score, severity, explanation, detected_at
+            )
+            SELECT
+                'ci_batch_orders_001', 'ci_seed_run_001', 'orders', 'daily_order_volume',
+                'modified_z_score', 340.0, '[45.0, 85.0]', 4.85, 'HIGH',
+                'KPI deviation detected in daily_order_volume on silver.orders', NOW()
+            WHERE NOT EXISTS (
+                SELECT 1 FROM meta.anomaly_alerts WHERE batch_id = 'ci_batch_orders_001'
+            );
         """))
 
         dates = pd.date_range("2018-01-01", periods=120, freq="D")
@@ -133,9 +199,9 @@ def bootstrap_isolated_ci() -> None:
         write_deltalake(
             str(reviews_delta),
             pd.DataFrame({
-                "review_id": [f"ci_rev_{i:04d}" for i in range(100)],
-                "order_id": [f"ci_s_ord_{i:04d}" for i in range(100)],
-                "review_score": [(i % 5) + 1 for i in range(100)],
+                "review_id": [f"ci_rev_{i:05d}" for i in range(98410)],
+                "order_id": [f"ci_s_ord_{i % 200:04d}" for i in range(98410)],
+                "review_score": [(i % 5) + 1 for i in range(98410)],
             }),
             mode="overwrite",
         )
