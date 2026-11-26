@@ -22,7 +22,9 @@ def bootstrap_isolated_ci() -> None:
                 conn.execute(text(p.read_text(encoding="utf-8")))
 
         conn.execute(text("CREATE SCHEMA IF NOT EXISTS gold;"))
+        conn.execute(text("CREATE SCHEMA IF NOT EXISTS source_oltp;"))
         conn.execute(text("ALTER TABLE meta.pipeline_runs ADD COLUMN IF NOT EXISTS dq_status VARCHAR(20) DEFAULT 'PASSED';"))
+
         conn.execute(text("""
             CREATE TABLE IF NOT EXISTS gold.dimcustomer (
                 customer_sk SERIAL PRIMARY KEY,
@@ -46,12 +48,104 @@ def bootstrap_isolated_ci() -> None:
             );
         """))
         conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS gold.dimlocation (
+                location_sk BIGINT,
+                zip_code_prefix TEXT,
+                city TEXT,
+                state TEXT,
+                latitude DOUBLE PRECISION,
+                longitude DOUBLE PRECISION
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS gold.dimproduct (
+                product_sk BIGINT,
+                product_id TEXT,
+                product_category_name TEXT,
+                product_category_name_english TEXT,
+                product_weight_g DOUBLE PRECISION,
+                product_length_cm DOUBLE PRECISION,
+                product_height_cm DOUBLE PRECISION,
+                product_width_cm DOUBLE PRECISION
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS gold.dimseller (
+                seller_sk BIGINT,
+                seller_id TEXT,
+                seller_zip_code_prefix TEXT,
+                seller_city TEXT,
+                seller_state TEXT
+            );
+        """))
+        conn.execute(text("""
             CREATE TABLE IF NOT EXISTS gold.factorders (
                 order_id VARCHAR(64) PRIMARY KEY,
                 customer_sk INT,
                 order_date_sk INT REFERENCES gold.dimdate(date_sk),
                 order_status VARCHAR(32),
                 total_order_value NUMERIC(12, 2)
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS gold.factorderitems (
+                order_id TEXT,
+                order_item_id BIGINT,
+                product_sk BIGINT,
+                seller_sk BIGINT,
+                customer_sk BIGINT,
+                order_date_key BIGINT,
+                price DOUBLE PRECISION,
+                freight_value DOUBLE PRECISION,
+                total_item_value DOUBLE PRECISION
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS gold.factpayments (
+                order_id TEXT,
+                payment_sequential BIGINT,
+                customer_sk BIGINT,
+                order_date_key BIGINT,
+                payment_type TEXT,
+                payment_installments BIGINT,
+                payment_value DOUBLE PRECISION
+            );
+        """))
+
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS source_oltp.category_translation (
+                product_category_name TEXT,
+                product_category_name_english TEXT
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS source_oltp.customers (
+                customer_id TEXT,
+                customer_unique_id TEXT,
+                customer_zip_code_prefix BIGINT,
+                customer_city TEXT,
+                customer_state TEXT
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS source_oltp.products (
+                product_id TEXT,
+                product_category_name TEXT,
+                product_name_lenght DOUBLE PRECISION,
+                product_description_lenght DOUBLE PRECISION,
+                product_photos_qty DOUBLE PRECISION,
+                product_weight_g DOUBLE PRECISION,
+                product_length_cm DOUBLE PRECISION,
+                product_height_cm DOUBLE PRECISION,
+                product_width_cm DOUBLE PRECISION
+            );
+        """))
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS source_oltp.sellers (
+                seller_id TEXT,
+                seller_zip_code_prefix BIGINT,
+                seller_city TEXT,
+                seller_state TEXT
             );
         """))
 
