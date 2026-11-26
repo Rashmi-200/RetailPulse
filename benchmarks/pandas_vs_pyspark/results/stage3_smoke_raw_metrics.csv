@@ -1,0 +1,13 @@
+engine,scale,run_type,run_index,workload_id,workload_name,input_rows,output_rows,input_bytes,spark_init_sec,execution_sec,total_sec,throughput_rows_per_sec,rss_before_mb,rss_after_mb,rss_delta_mb,peak_process_rss_mb,cpu_time_sec,cpu_utilization_pct,status,notes
+pandas,stage3_smoke_5k,warm,1,W1,CSV Ingestion & Metadata Stamping,5000,5000,17654914,0.0,0.0922,0.0922,54238.35,122.02,149.39,27.37,150.18,0.09,48.81,SUCCESS,
+pandas,stage3_smoke_5k,warm,1,W2,"Data Cleaning, Type Casting & Null Handling",38166,38166,126186995,0.0,0.0355,0.0355,1073859.57,149.39,153.14,3.75,153.14,0.04,56.27,SUCCESS,
+pandas,stage3_smoke_5k,warm,1,W3,Data Quality Checks & Duplicate Detection,20000,5732,126186995,0.0,0.021,0.021,953240.0,153.14,154.89,1.75,154.89,0.02,47.66,SUCCESS,
+pandas,stage3_smoke_5k,warm,1,W4,Group-By Aggregations & Financial Rollups,5732,996,126186995,0.0,0.0174,0.0174,328576.28,154.89,155.51,0.62,155.51,0.02,57.32,SUCCESS,
+pandas,stage3_smoke_5k,warm,1,W5,Silver-to-Gold Star Schema Joins,5243,5243,126186995,0.0,0.0329,0.0329,159218.45,155.51,157.39,1.88,157.39,0.03,45.55,SUCCESS,
+pandas,stage3_smoke_5k,warm,1,W6,SCD Type 2 Change Detection & Gold Analytical Summaries,10000,5025,126186995,0.0,0.0495,0.0495,201913.7,157.39,158.76,1.38,158.76,0.05,50.48,SUCCESS,
+pyspark,stage3_smoke_5k,warm,1,W1,CSV Ingestion & Metadata Stamping,5000,5000,17654914,2.8821,5.0514,7.9335,989.82,152.3,164.93,12.62,164.93,0.4,3.96,SUCCESS,
+pyspark,stage3_smoke_5k,warm,1,W2,"Data Cleaning, Type Casting & Null Handling",38166,38166,126186995,0.0,3.0969,3.0969,12323.94,164.93,164.29,-0.64,168.68,0.08,1.29,SUCCESS,
+pyspark,stage3_smoke_5k,warm,1,W3,Data Quality Checks & Duplicate Detection,20000,5732,126186995,0.0,4.5552,4.5552,4390.62,164.29,164.07,-0.21,168.68,0.04,0.44,SUCCESS,
+pyspark,stage3_smoke_5k,warm,1,W4,Group-By Aggregations & Financial Rollups,5732,996,126186995,0.0,6.3135,6.3135,907.9,164.07,164.2,0.12,168.68,0.06,0.48,SUCCESS,
+pyspark,stage3_smoke_5k,warm,1,W5,Silver-to-Gold Star Schema Joins,5243,5243,126186995,0.0,4.9085,4.9085,1068.14,164.2,165.01,0.81,168.68,0.06,0.61,SUCCESS,
+pyspark,stage3_smoke_5k,warm,1,W6,SCD Type 2 Change Detection & Gold Analytical Summaries,10000,5622,126186995,0.0,5.2503,5.2503,1904.66,165.01,167.61,2.6,170.26,0.08,0.76,SUCCESS,

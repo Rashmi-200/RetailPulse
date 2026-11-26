@@ -1,0 +1,13 @@
+engine,scale,run_type,workload_id,workload_name,repetitions,input_rows,output_rows,spark_init_sec,exec_mean_sec,exec_median_sec,exec_std_sec,throughput_mean_rows_per_sec,peak_rss_max_mb,cpu_util_mean_pct
+pandas,5x,cold,W1,CSV Ingestion & Metadata Stamping,1,497205,497205,0.0,6.9092,6.9092,0.0,71963.19,2238.77,41.97
+pandas,5x,cold,W2,"Data Cleaning, Type Casting & Null Handling",1,7754326,7754326,0.0,8.7874,8.7874,0.0,882437.09,3307.4,49.16
+pandas,5x,cold,W3,Data Quality Checks & Duplicate Detection,1,2076005,2076005,0.0,10.9143,10.9143,0.0,190209.97,3307.4,49.34
+pandas,5x,cold,W4,Group-By Aggregations & Financial Rollups,1,6579615,1511806,0.0,3.3655,3.3655,0.0,1954989.76,3307.4,49.47
+pandas,5x,cold,W5,Silver-to-Gold Star Schema Joins,1,1060455,1060455,0.0,6.9069,6.9069,0.0,153536.55,3307.4,49.37
+pandas,5x,cold,W6,SCD Type 2 Change Detection & Gold Analytical Summaries,1,994410,482638,0.0,8.4446,8.4446,0.0,117756.81,3307.4,49.91
+pandas,5x,warm,W1,CSV Ingestion & Metadata Stamping,3,497205,497205,0.0,5.608,5.4054,0.4817,89080.4,3376.6,43.24
+pandas,5x,warm,W2,"Data Cleaning, Type Casting & Null Handling",3,7754326,7754326,0.0,8.3712,8.3419,0.4212,927869.09,3382.2,49.88
+pandas,5x,warm,W3,Data Quality Checks & Duplicate Detection,3,2076005,2076005,0.0,11.5954,11.2202,0.7831,179564.01,3382.2,49.61
+pandas,5x,warm,W4,Group-By Aggregations & Financial Rollups,3,6579615,1511806,0.0,3.8857,3.7898,0.3224,1700859.46,3382.2,49.59
+pandas,5x,warm,W5,Silver-to-Gold Star Schema Joins,3,1060455,1060455,0.0,7.0818,7.1846,0.2597,149880.95,3382.2,49.33
+pandas,5x,warm,W6,SCD Type 2 Change Detection & Gold Analytical Summaries,3,994410,482638,0.0,8.5633,8.5713,0.0258,116125.66,3382.2,49.77

@@ -1,0 +1,8 @@
+{
+  "scale": "1x",
+  "free_ram_before_mb": 3355.14,
+  "pandas_status": "COMPLETED",
+  "pyspark_status": "COMPLETED",
+  "parity_status": "ALL_PASSED",
+  "spark_init_sec": 6.0871
+}

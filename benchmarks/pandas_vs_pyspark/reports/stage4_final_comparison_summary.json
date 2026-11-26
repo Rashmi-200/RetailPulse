@@ -1,0 +1,204 @@
+{
+  "milestone": "14C-3",
+  "stage": "Stage 4 Final Comparison & Architectural Recommendation",
+  "hardware_environment": {
+    "host_os": "Windows 11 (15.77 GB Physical RAM)",
+    "container_runtime": "Docker Desktop Linux Engine (WSL2 VM)",
+    "effective_container_ram_limit_gb": 3.83,
+    "effective_container_ram_limit_mb": 3917.75,
+    "spark_mode": "local[2]",
+    "spark_driver_memory": "1536m",
+    "spark_executor_memory": "1536m",
+    "spark_shuffle_partitions": 8
+  },
+  "scale_execution_status": {
+    "1x": {
+      "size_mb": 120.34,
+      "pandas_status": "COMPLETED",
+      "pyspark_status": "COMPLETED",
+      "parity_status": "ALL_PASSED",
+      "spark_init_sec": 6.0871,
+      "total_pandas_warm_sec": 6.4777,
+      "total_pyspark_warm_sec": 38.9035
+    },
+    "5x": {
+      "size_mb": 530.94,
+      "pandas_status": "COMPLETED (all 6 workloads executed within 3.83 GB limit)",
+      "pyspark_status": "FAILED_OOM_MEMORY_BOUNDARY (java.io.IOException: Cannot allocate memory / JVM heap & native buffer exhaustion inside 3.83 GB Docker VM)",
+      "pandas_5x_metrics": [
+        {
+          "workload_id": "W1",
+          "runs_completed": 4,
+          "input_rows": 497205,
+          "exec_mean_sec": 5.9333,
+          "peak_rss_max_mb": 1411.41,
+          "throughput_mean_rows_sec": 84801.1
+        },
+        {
+          "workload_id": "W2",
+          "runs_completed": 4,
+          "input_rows": 7754326,
+          "exec_mean_sec": 8.4753,
+          "peak_rss_max_mb": 1987.07,
+          "throughput_mean_rows_sec": 916511.09
+        },
+        {
+          "workload_id": "W3",
+          "runs_completed": 4,
+          "input_rows": 2076005,
+          "exec_mean_sec": 11.4251,
+          "peak_rss_max_mb": 2868.53,
+          "throughput_mean_rows_sec": 182225.5
+        },
+        {
+          "workload_id": "W4",
+          "runs_completed": 4,
+          "input_rows": 6579615,
+          "exec_mean_sec": 3.7557,
+          "peak_rss_max_mb": 2910.28,
+          "throughput_mean_rows_sec": 1764392.04
+        },
+        {
+          "workload_id": "W5",
+          "runs_completed": 4,
+          "input_rows": 1060455,
+          "exec_mean_sec": 7.0381,
+          "peak_rss_max_mb": 2910.65,
+          "throughput_mean_rows_sec": 150794.85
+        },
+        {
+          "workload_id": "W6",
+          "runs_completed": 4,
+          "input_rows": 994410,
+          "exec_mean_sec": 8.5336,
+          "peak_rss_max_mb": 3112.21,
+          "throughput_mean_rows_sec": 116533.45
+        }
+      ]
+    },
+    "10x_and_20x": {
+      "status": "FORMALLY_STOPPED_AT_5X_RESOURCE_BOUNDARY",
+      "reason": "Per Stage 4 resource safeguards, scaling experiments stopped at the empirically measured 5x (530.94 MB) Docker memory boundary rather than forcing OOM crashes at 10x (1.05 GB) and 20x (2.10 GB)."
+    }
+  },
+  "1x_workload_comparison": [
+    {
+      "workload_id": "W1",
+      "workload_name": "CSV Ingestion & Metadata Stamping",
+      "input_rows": 99441,
+      "output_rows": 99441,
+      "pandas_cold_sec": 1.0364,
+      "pyspark_cold_sec": 5.6863,
+      "pandas_warm_mean_sec": 1.0084,
+      "pandas_warm_std_sec": 0.2229,
+      "pyspark_warm_mean_sec": 2.9213,
+      "pyspark_warm_std_sec": 0.2465,
+      "pandas_speedup_vs_pyspark_x": 2.9,
+      "pandas_throughput_rows_sec": 101543.42,
+      "pyspark_throughput_rows_sec": 34201.01,
+      "pandas_peak_rss_mb": 831.08,
+      "pyspark_peak_rss_mb": 833.86,
+      "pandas_cpu_mean_pct": 44.54,
+      "pyspark_cpu_mean_pct": 0.18
+    },
+    {
+      "workload_id": "W2",
+      "workload_name": "Data Cleaning, Type Casting & Null Handling",
+      "input_rows": 1550922,
+      "output_rows": 1550922,
+      "pandas_cold_sec": 1.587,
+      "pyspark_cold_sec": 7.587,
+      "pandas_warm_mean_sec": 1.5133,
+      "pandas_warm_std_sec": 0.1022,
+      "pyspark_warm_mean_sec": 6.826,
+      "pyspark_warm_std_sec": 0.4892,
+      "pandas_speedup_vs_pyspark_x": 4.51,
+      "pandas_throughput_rows_sec": 1027878.17,
+      "pyspark_throughput_rows_sec": 227992.62,
+      "pandas_peak_rss_mb": 833.86,
+      "pyspark_peak_rss_mb": 833.86,
+      "pandas_cpu_mean_pct": 49.61,
+      "pyspark_cpu_mean_pct": 0.46
+    },
+    {
+      "workload_id": "W3",
+      "workload_name": "Data Quality Checks & Duplicate Detection",
+      "input_rows": 415201,
+      "output_rows": 415201,
+      "pandas_cold_sec": 1.6517,
+      "pyspark_cold_sec": 12.6801,
+      "pandas_warm_mean_sec": 1.4255,
+      "pandas_warm_std_sec": 0.0892,
+      "pyspark_warm_mean_sec": 7.8002,
+      "pyspark_warm_std_sec": 0.4709,
+      "pandas_speedup_vs_pyspark_x": 5.47,
+      "pandas_throughput_rows_sec": 292045.67,
+      "pyspark_throughput_rows_sec": 53354.72,
+      "pandas_peak_rss_mb": 833.86,
+      "pyspark_peak_rss_mb": 833.86,
+      "pandas_cpu_mean_pct": 49.37,
+      "pyspark_cpu_mean_pct": 0.21
+    },
+    {
+      "workload_id": "W4",
+      "workload_name": "Group-By Aggregations & Financial Rollups",
+      "input_rows": 1315923,
+      "output_rows": 324690,
+      "pandas_cold_sec": 1.5788,
+      "pyspark_cold_sec": 13.3655,
+      "pandas_warm_mean_sec": 0.5143,
+      "pandas_warm_std_sec": 0.0079,
+      "pyspark_warm_mean_sec": 10.9414,
+      "pyspark_warm_std_sec": 0.2276,
+      "pandas_speedup_vs_pyspark_x": 21.27,
+      "pandas_throughput_rows_sec": 2559105.21,
+      "pyspark_throughput_rows_sec": 120304.99,
+      "pandas_peak_rss_mb": 833.86,
+      "pyspark_peak_rss_mb": 833.86,
+      "pandas_cpu_mean_pct": 49.9,
+      "pyspark_cpu_mean_pct": 0.23
+    },
+    {
+      "workload_id": "W5",
+      "workload_name": "Silver-to-Gold Star Schema Joins",
+      "input_rows": 212091,
+      "output_rows": 212091,
+      "pandas_cold_sec": 1.3009,
+      "pyspark_cold_sec": 4.313,
+      "pandas_warm_mean_sec": 0.8806,
+      "pandas_warm_std_sec": 0.0355,
+      "pyspark_warm_mean_sec": 4.0285,
+      "pyspark_warm_std_sec": 0.0945,
+      "pandas_speedup_vs_pyspark_x": 4.57,
+      "pandas_throughput_rows_sec": 241113.18,
+      "pyspark_throughput_rows_sec": 52666.81,
+      "pandas_peak_rss_mb": 833.86,
+      "pyspark_peak_rss_mb": 833.86,
+      "pandas_cpu_mean_pct": 49.96,
+      "pyspark_cpu_mean_pct": 0.54
+    },
+    {
+      "workload_id": "W6",
+      "workload_name": "SCD Type 2 Change Detection & Gold Analytical Summaries",
+      "input_rows": 198882,
+      "output_rows": 97138,
+      "pandas_cold_sec": 1.7212,
+      "pyspark_cold_sec": 7.4553,
+      "pandas_warm_mean_sec": 1.1356,
+      "pandas_warm_std_sec": 0.0369,
+      "pyspark_warm_mean_sec": 6.3861,
+      "pyspark_warm_std_sec": 0.2208,
+      "pandas_speedup_vs_pyspark_x": 5.62,
+      "pandas_throughput_rows_sec": 175260.26,
+      "pyspark_throughput_rows_sec": 31168.0,
+      "pandas_peak_rss_mb": 833.86,
+      "pyspark_peak_rss_mb": 833.86,
+      "pandas_cpu_mean_pct": 50.05,
+      "pyspark_cpu_mean_pct": 0.36
+    }
+  ],
+  "recommendation": {
+    "decision": "RETAIN_PANDAS (with Parquet + DuckDB/Polars local optimizations if needed; defer PySpark until multi-node cluster or >=16 GB dedicated RAM is provisioned)",
+    "confidence": "High (backed by 100% parity verification and empirical 1x/5x benchmarks)"
+  }
+}

@@ -1,0 +1,39 @@
+benchmark:
+  name: RetailPulse Pandas vs PySpark Empirical Benchmark
+  raw_data_dir: /workspace/data/raw
+  scaled_data_dir: /workspace/benchmarks/pandas_vs_pyspark/scaled_data
+  results_dir: /workspace/benchmarks/pandas_vs_pyspark/results
+  reports_dir: /workspace/benchmarks/pandas_vs_pyspark/reports
+  scales:
+  - name: 1x
+    factor: 1
+    enabled: true
+  - name: 5x
+    factor: 5
+    enabled: true
+  - name: 10x
+    factor: 10
+    enabled: true
+  - name: 20x
+    factor: 20
+    enabled: guarded
+  repetitions:
+    cold_runs: 1
+    warm_runs: 1
+  safety:
+    min_free_container_mem_mb: 1500
+    max_container_mem_limit_mb: 5120
+    clear_spark_cache_each_run: true
+    force_gc_each_run: true
+spark:
+  app_name: RetailPulse-PySpark-Benchmark
+  master: local[2]
+  configs:
+    spark.sql.shuffle.partitions: '4'
+    spark.default.parallelism: '4'
+    spark.driver.memory: 3g
+    spark.driver.maxResultSize: 1g
+    spark.ui.enabled: 'false'
+    spark.sql.execution.arrow.pyspark.enabled: 'true'
+    spark.sql.adaptive.enabled: 'true'
+    spark.serializer: org.apache.spark.serializer.KryoSerializer

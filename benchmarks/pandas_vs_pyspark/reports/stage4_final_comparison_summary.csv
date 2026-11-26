@@ -1,0 +1,7 @@
+workload_id,workload_name,input_rows,output_rows,pandas_cold_sec,pyspark_cold_sec,pandas_warm_mean_sec,pandas_warm_std_sec,pyspark_warm_mean_sec,pyspark_warm_std_sec,pandas_speedup_vs_pyspark_x,pandas_throughput_rows_sec,pyspark_throughput_rows_sec,pandas_peak_rss_mb,pyspark_peak_rss_mb,pandas_cpu_mean_pct,pyspark_cpu_mean_pct
+W1,CSV Ingestion & Metadata Stamping,99441,99441,1.0364,5.6863,1.0084,0.2229,2.9213,0.2465,2.9,101543.42,34201.01,831.08,833.86,44.54,0.18
+W2,"Data Cleaning, Type Casting & Null Handling",1550922,1550922,1.587,7.587,1.5133,0.1022,6.826,0.4892,4.51,1027878.17,227992.62,833.86,833.86,49.61,0.46
+W3,Data Quality Checks & Duplicate Detection,415201,415201,1.6517,12.6801,1.4255,0.0892,7.8002,0.4709,5.47,292045.67,53354.72,833.86,833.86,49.37,0.21
+W4,Group-By Aggregations & Financial Rollups,1315923,324690,1.5788,13.3655,0.5143,0.0079,10.9414,0.2276,21.27,2559105.21,120304.99,833.86,833.86,49.9,0.23
+W5,Silver-to-Gold Star Schema Joins,212091,212091,1.3009,4.313,0.8806,0.0355,4.0285,0.0945,4.57,241113.18,52666.81,833.86,833.86,49.96,0.54
+W6,SCD Type 2 Change Detection & Gold Analytical Summaries,198882,97138,1.7212,7.4553,1.1356,0.0369,6.3861,0.2208,5.62,175260.26,31168.0,833.86,833.86,50.05,0.36

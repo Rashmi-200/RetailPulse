@@ -31,3 +31,11 @@ logs/*
 Thumbs.db
 .vscode/
 .idea/
+
+# PostgreSQL Backup Artifacts
+backups/*
+!backups/.gitkeep
+
+# Generated Benchmark Scaled Datasets (Large CSVs)
+benchmarks/pandas_vs_pyspark/scaled_data/*
+!benchmarks/pandas_vs_pyspark/scaled_data/.gitkeep

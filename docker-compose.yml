@@ -1,0 +1,175 @@
+name: retailpulse-platform
+
+x-airflow-common: &airflow-common
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  image: retailpulse-airflow:2.10.3-custom
+  stop_grace_period: 30s
+  environment: &airflow-common-env
+    APP_ENV: ${APP_ENV:-production}
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_DB_USER:?AIRFLOW_DB_USER required}:${AIRFLOW_DB_PASSWORD:?AIRFLOW_DB_PASSWORD required}@airflow-postgres:5432/${AIRFLOW_DB_NAME:-airflow_meta}
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?AIRFLOW_FERNET_KEY required}
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session"
+    AIRFLOW__WEBSERVER__WORKERS: "1"
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+    PYTHONPATH: /opt/airflow/retailpulse
+    DB_HOST: retailpulse-postgres
+    DB_PORT: "5432"
+    DB_NAME: ${DOCKER_DB_NAME:-retailpulse_docker_db}
+    DB_USER: ${DOCKER_DB_USER:-retailpulse_app}
+    DB_PASSWORD: ${DOCKER_DB_PASSWORD:?DOCKER_DB_PASSWORD required}
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./src:/opt/airflow/retailpulse/src:ro
+    - ./config:/opt/airflow/retailpulse/config:ro
+    - ./sql:/opt/airflow/retailpulse/sql:ro
+    - ./scripts:/opt/airflow/retailpulse/scripts:ro
+    - retailpulse_lakehouse_data:/opt/airflow/retailpulse/data
+    - retailpulse_logs:/opt/airflow/retailpulse/logs
+  depends_on:
+    airflow-postgres:
+      condition: service_healthy
+    retailpulse-postgres:
+      condition: service_healthy
+  networks:
+    - retailpulse-net
+
+services:
+  retailpulse-postgres:
+    image: postgres:16-alpine
+    container_name: retailpulse-postgres
+    restart: unless-stopped
+    mem_limit: 512m
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_DB: ${DOCKER_DB_NAME:-retailpulse_docker_db}
+      POSTGRES_USER: ${DOCKER_DB_USER:-retailpulse_app}
+      POSTGRES_PASSWORD: ${DOCKER_DB_PASSWORD:?DOCKER_DB_PASSWORD required}
+    volumes:
+      - retailpulse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DOCKER_DB_USER:-retailpulse_app} -d ${DOCKER_DB_NAME:-retailpulse_docker_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - retailpulse-net
+
+  retailpulse-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: retailpulse-api
+    restart: unless-stopped
+    mem_limit: 1024m
+    stop_grace_period: 30s
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      DATA_DIR: /app/data
+      LOG_DIR: /app/logs
+      RETAILPULSE_API_KEY: ${RETAILPULSE_API_KEY:?RETAILPULSE_API_KEY required}
+      API_AUTH_REQUIRED: ${API_AUTH_REQUIRED:-true}
+      API_RATE_LIMIT_PER_MIN: ${API_RATE_LIMIT_PER_MIN:-120}
+      DB_HOST: retailpulse-postgres
+      DB_PORT: "5432"
+      DB_NAME: ${DOCKER_DB_NAME:-retailpulse_docker_db}
+      DB_USER: ${DOCKER_DB_USER:-retailpulse_app}
+      DB_PASSWORD: ${DOCKER_DB_PASSWORD:?DOCKER_DB_PASSWORD required}
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - retailpulse_lakehouse_data:/app/data
+      - retailpulse_logs:/app/logs
+    depends_on:
+      retailpulse-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+      start_period: 15s
+    networks:
+      - retailpulse-net
+
+  airflow-postgres:
+    image: postgres:16-alpine
+    container_name: airflow-postgres
+    restart: unless-stopped
+    mem_limit: 512m
+    stop_grace_period: 30s
+    environment:
+      POSTGRES_DB: ${AIRFLOW_DB_NAME:-airflow_meta}
+      POSTGRES_USER: ${AIRFLOW_DB_USER:-airflow}
+      POSTGRES_PASSWORD: ${AIRFLOW_DB_PASSWORD:?AIRFLOW_DB_PASSWORD required}
+    volumes:
+      - airflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${AIRFLOW_DB_USER:-airflow} -d ${AIRFLOW_DB_NAME:-airflow_meta}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - retailpulse-net
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    mem_limit: 1024m
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        python -c "from src.utils.config_loader import validate_runtime_environment; validate_runtime_environment(service='airflow')" &&
+        airflow db migrate &&
+        airflow users create --username admin --firstname RetailPulse --lastname Admin --role Admin --email admin@retailpulse.local --password admin || true
+    restart: "no"
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    restart: unless-stopped
+    mem_limit: 1024m
+    command: webserver
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 25s
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    restart: unless-stopped
+    mem_limit: 1536m
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "airflow jobs check --job-type SchedulerJob --local"]
+      interval: 20s
+      timeout: 10s
+      retries: 6
+      start_period: 25s
+
+volumes:
+  retailpulse_pgdata:
+  airflow_pgdata:
+  retailpulse_lakehouse_data:
+  retailpulse_logs:
+
+networks:
+  retailpulse-net:
+    driver: bridge

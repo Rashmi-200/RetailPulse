@@ -109,7 +109,7 @@ class BronzeIngestor:
         )
         return target_count
 
-    def ingest_csv_source(self, run_id: str, dataset_name: str, meta: dict, cutoff_watermark: Optional[str] = None) -> int:
+    def ingest_csv_source(self, run_id: str, dataset_name: str, meta: dict, cutoff_watermark: Optional[str] = None, batch_id: Optional[str] = None) -> int:
         with self.tracker.track_task_run(run_id, f"ingest_csv_{dataset_name}", layer="bronze") as metrics:
             csv_path = self.raw_dir / meta["file"]
             df = pd.read_csv(csv_path)
@@ -138,7 +138,7 @@ class BronzeIngestor:
                 logger.info(f"[SKIPPED - DUPLICATE WINDOW] csv_files.{dataset_name} ({wm_start} -> {wm_end})")
                 return 0
 
-            batch_id = generate_id("batch")
+            batch_id = batch_id or generate_id("batch")
             stamped_df = self._stamp_bronze_metadata(df, batch_id, "csv_files")
             write_mode = "overwrite" if extraction_mode == "full" else "append"
             bronze_path = self._write_bronze(stamped_df, dataset_name, batch_id, mode=write_mode)
@@ -157,10 +157,10 @@ class BronzeIngestor:
         with self.engine.connect() as conn:
             return pd.read_sql(text(f"SELECT * FROM {schema}.{table_name}"), conn)
 
-    def ingest_postgres_source(self, run_id: str, table_name: str, schema: str) -> int:
+    def ingest_postgres_source(self, run_id: str, table_name: str, schema: str, batch_id: Optional[str] = None) -> int:
         with self.tracker.track_task_run(run_id, f"ingest_pg_{table_name}", layer="bronze") as metrics:
             df = self._query_postgres_table(schema, table_name)
-            batch_id = generate_id("batch")
+            batch_id = batch_id or generate_id("batch")
             stamped_df = self._stamp_bronze_metadata(df, batch_id, f"postgres.{schema}")
             bronze_path = self._write_bronze(stamped_df, table_name, batch_id, mode="overwrite")
 
@@ -183,7 +183,7 @@ class BronzeIngestor:
         return response.json()
 
     def ingest_rest_api_source(
-        self, run_id: str, dataset_name: str, meta: dict, simulate_timeout: bool = False
+        self, run_id: str, dataset_name: str, meta: dict, simulate_timeout: bool = False, batch_id: Optional[str] = None
     ) -> int:
         with self.tracker.track_task_run(run_id, f"ingest_api_{dataset_name}", layer="bronze") as metrics:
             endpoint = meta["endpoint"]
@@ -200,7 +200,7 @@ class BronzeIngestor:
                 offset += limit
 
             df = pd.DataFrame(all_records)
-            batch_id = generate_id("batch")
+            batch_id = batch_id or generate_id("batch")
             stamped_df = self._stamp_bronze_metadata(df, batch_id, "rest_api")
             bronze_path = self._write_bronze(stamped_df, dataset_name, batch_id, mode="overwrite")
 

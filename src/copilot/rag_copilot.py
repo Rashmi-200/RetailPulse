@@ -1,3 +1,4 @@
+import re
 import json
 import os
 from pathlib import Path
@@ -82,7 +83,7 @@ class HybridDataEngineeringCopilot:
 
         # 3. Index recent structured log lines
         if self.log_path.exists():
-            lines = self.log_path.read_text(encoding="utf-8", errors="ignore").splitlines()[-150:]
+            lines = self.log_path.read_text(encoding="utf-8", errors="ignore").splitlines()[-500:]
             for idx in range(0, len(lines), 5):
                 chunk = "\n".join(lines[idx : idx + 5])
                 if chunk.strip():
@@ -113,9 +114,18 @@ class HybridDataEngineeringCopilot:
         k = min(top_k, len(self.documents))
         scores, indices = self.index.search(q_vec, k)
 
+        domain_terms = {
+            "order", "orders", "review", "reviews", "quarantine", "duplicate",
+            "incident", "schema", "pipeline", "dq", "quality", "bronze", "silver",
+            "gold", "anomaly", "batch", "error", "fail", "failed", "table", "sql",
+            "customer", "product", "seller", "payment", "lineage", "rca"
+        }
+        q_tokens = set(re.findall(r"[a-z_]+", question.lower()))
+        min_sim = 0.08 if (q_tokens & domain_terms) else 0.25
+
         results = []
         for score, idx in zip(scores[0], indices[0]):
-            if idx >= 0 and score >= 0.13:
+            if idx >= 0 and score >= min_sim:
                 results.append(
                     {
                         "source": self.documents[idx]["source"],
@@ -280,10 +290,69 @@ class HybridDataEngineeringCopilot:
 
     @staticmethod
     def validate_readonly_sql(sql_text: str) -> bool:
-        normalized = ' '.join(sql_text.strip().upper().split())
-        forbidden = ('INSERT ', 'UPDATE ', 'DELETE ', 'DROP ', 'ALTER ', 'TRUNCATE ', 'GRANT ', 'REVOKE ', 'CREATE ')
-        if not normalized.startswith('SELECT '):
-            raise PermissionError('Only read-only SELECT statements are permitted in Copilot SQL path.')
-        if any(kw in normalized for kw in forbidden):
-            raise PermissionError(f'Forbidden write/DDL keyword detected in Copilot SQL: {sql_text}')
+        """Enforce strict SELECT-only query safety: blocks DDL/DML, multi-statements, comments, unsafe functions, and system schemas."""
+        if not sql_text or not sql_text.strip():
+            raise PermissionError("Empty SQL query is not permitted.")
+
+        raw = sql_text.strip()
+        if "--" in raw or "/*" in raw or "*/" in raw:
+            raise PermissionError("SQL comments (-- or /* */) are blocked in read-only Copilot mode.")
+
+        stripped_semi = raw.rstrip(";").strip()
+        if ";" in stripped_semi:
+            raise PermissionError("Multiple stacked SQL statements are blocked.")
+
+        normalized = re.sub(r"\s+", " ", stripped_semi).upper()
+        if not (normalized.startswith("SELECT ") or normalized.startswith("WITH ")):
+            raise PermissionError("Only SELECT / CTE queries are permitted in read-only Copilot mode.")
+
+        forbidden_keywords = (
+            r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|REPLACE|GRANT|REVOKE|"
+            r"COPY|EXECUTE|CALL|MERGE|VACUUM|ANALYZE|REINDEX|CLUSTER|LOCK|SET|RESET|DO)\b"
+        )
+        if re.search(forbidden_keywords, normalized):
+            raise PermissionError("Write, DDL, DCL, or session-mutating SQL keywords are strictly blocked.")
+
+        unsafe_functions = (
+            r"\b(PG_SLEEP|PG_READ_FILE|PG_READ_BINARY_FILE|PG_LS_DIR|PG_STAT_FILE|"
+            r"PG_TERMINATE_BACKEND|PG_CANCEL_BACKEND|LO_IMPORT|LO_EXPORT|DBLINK|INET_CLIENT_ADDR)\s*\("
+        )
+        if re.search(unsafe_functions, normalized):
+            raise PermissionError("Unsafe PostgreSQL administrative or filesystem functions are blocked.")
+
+        unauthorized_schemas = r"\b(PG_CATALOG|INFORMATION_SCHEMA|PG_TOAST|PG_TEMP)\b"
+        if re.search(unauthorized_schemas, normalized):
+            raise PermissionError("Access to internal PostgreSQL system schemas is unauthorized.")
+
         return True
+
+    def ensure_readonly_role(self) -> None:
+        """Ensure least-privilege PostgreSQL role retailpulse_readonly exists with SELECT-only schema grants."""
+        with self.engine.begin() as conn:
+            conn.execute(text("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'retailpulse_readonly') THEN
+                        CREATE ROLE retailpulse_readonly NOLOGIN;
+                    END IF;
+                END $$;
+            """))
+            for sch in ("meta", "gold", "quarantine"):
+                exists = conn.execute(
+                    text("SELECT 1 FROM information_schema.schemata WHERE schema_name = :s"),
+                    {"s": sch},
+                ).scalar()
+                if exists:
+                    conn.execute(text(f"GRANT USAGE ON SCHEMA {sch} TO retailpulse_readonly"))
+                    conn.execute(text(f"GRANT SELECT ON ALL TABLES IN SCHEMA {sch} TO retailpulse_readonly"))
+
+    def execute_readonly_sql(self, sql_text: str) -> list[dict]:
+        """Validate and execute SQL inside a READ ONLY transaction under least-privilege retailpulse_readonly role."""
+        self.validate_readonly_sql(sql_text)
+        self.ensure_readonly_role()
+        clean_sql = sql_text.strip().rstrip(";")
+        with self.engine.connect() as conn:
+            conn.execute(text("SET TRANSACTION READ ONLY"))
+            conn.execute(text("SET LOCAL ROLE retailpulse_readonly"))
+            rows = conn.execute(text(clean_sql)).mappings().fetchall()
+            return [dict(r) for r in rows]

@@ -54,7 +54,8 @@ class SchemaEvolutionRegistry:
         layer: str,
         required_columns: Optional[List[str]] = None,
         run_id: Optional[str] = None,
-    ) -> SchemaEvolutionResult:
+        batch_id: Optional[str] = None,
+    )-> SchemaEvolutionResult:
         required_columns = required_columns or []
         curr_schema = self.extract_canonical_schema(df)
         curr_hash = self.compute_schema_hash(curr_schema)

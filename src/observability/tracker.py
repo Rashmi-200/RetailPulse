@@ -193,6 +193,29 @@ class ObservabilityTracker:
                         :source_count, :target_count, :recon_status,
                         :bronze_path, :ingested_at
                     )
+                    ON CONFLICT (batch_id) DO UPDATE SET
+                        run_id = EXCLUDED.run_id,
+                        source_system = EXCLUDED.source_system,
+                        dataset_name = CASE
+                            WHEN meta.batch_metadata.dataset_name = 'medallion_all' THEN EXCLUDED.dataset_name
+                            WHEN meta.batch_metadata.dataset_name LIKE '%' || EXCLUDED.dataset_name || '%' THEN meta.batch_metadata.dataset_name
+                            ELSE meta.batch_metadata.dataset_name || ',' || EXCLUDED.dataset_name
+                        END,
+                        extraction_mode = EXCLUDED.extraction_mode,
+                        watermark_column = COALESCE(EXCLUDED.watermark_column, meta.batch_metadata.watermark_column),
+                        watermark_start = COALESCE(EXCLUDED.watermark_start, meta.batch_metadata.watermark_start),
+                        watermark_end = COALESCE(EXCLUDED.watermark_end, meta.batch_metadata.watermark_end),
+                        source_record_count = CASE
+                            WHEN meta.batch_metadata.dataset_name LIKE '%' || EXCLUDED.dataset_name || '%' THEN EXCLUDED.source_record_count
+                            ELSE meta.batch_metadata.source_record_count + EXCLUDED.source_record_count
+                        END,
+                        target_record_count = CASE
+                            WHEN meta.batch_metadata.dataset_name LIKE '%' || EXCLUDED.dataset_name || '%' THEN EXCLUDED.target_record_count
+                            ELSE meta.batch_metadata.target_record_count + EXCLUDED.target_record_count
+                        END,
+                        reconciliation_status = EXCLUDED.reconciliation_status,
+                        bronze_path = EXCLUDED.bronze_path,
+                        ingested_at = EXCLUDED.ingested_at
                     """
                 ),
                 {
@@ -298,5 +321,12 @@ class ObservabilityTracker:
                     "detected_at": utc_now(),
                 },
             )
+        if run_id:
+            dq_flag = "FAILED" if (severity == "CRITICAL" or incident_type == "DATA_CONTRACT_VIOLATION") else "WARNING"
+            with self.engine.begin() as conn:
+                conn.execute(
+                    text("UPDATE meta.pipeline_runs SET dq_status = :dq WHERE run_id = :rid AND COALESCE(dq_status, 'PASSED') != 'FAILED'"),
+                    {"dq": dq_flag, "rid": run_id},
+                )
         logger.warning(f"[INCIDENT CREATED] {incident_id} | {incident_type} ({severity}) on {dataset_name}")
         return incident_id

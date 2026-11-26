@@ -138,7 +138,19 @@ class RCAEvidenceCollector:
         qualified = f"{layer}.{dataset_name}" if (layer and dataset_name) else (dataset_name or "")
         lineage_context = self.lineage.get_lineage_for_dataset(qualified) if qualified else {}
 
+        telemetry_sources = [
+            "meta.incidents",
+            "meta.task_runs",
+            "meta.batch_metadata",
+            "meta.quality_results",
+            "meta.schema_versions",
+            "meta.anomaly_alerts",
+            "quarantine.quarantined_records",
+            "meta.lineage_events",
+        ]
         return {
+            "telemetry_sources": telemetry_sources,
+            "telemetry_source_count": len(telemetry_sources),
             "incident_id": incident["incident_id"],
             "incident_type": incident["incident_type"],
             "severity": incident["severity"],

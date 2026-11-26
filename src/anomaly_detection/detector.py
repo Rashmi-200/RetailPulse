@@ -99,6 +99,8 @@ class HybridAnomalyDetector:
         )
 
         daily = daily[daily["daily_orders"] >= 5].reset_index(drop=True)
+        if daily.empty:
+            return []
 
         feature_cols = ["daily_orders", "daily_revenue", "avg_order_value", "cancel_rate"]
         z_mask = self.detect_zscore(daily["daily_orders"], threshold=3.0)

@@ -1,0 +1,378 @@
+{
+  "all_passed": true,
+  "total_workloads_validated": 6,
+  "known_engine_differences": [
+    "Pandas distinguishes float NaN from None whereas Spark uses unified SQL NULL; validator normalizes both to Python None/pd.NA prior to null-count and value checks.",
+    "Spark hash-partitioned shuffles produce non-deterministic row ordering; validator deterministically sorts both DataFrames by primary sort_keys before comparing.",
+    "Spark default timestamp formatting and Pandas datetime64[ns] differ in timezone/string representation; validator compares normalized ISO-8601 UTC strings or epoch seconds.",
+    "Floating-point summation order across parallel Spark partitions vs sequential Pandas C loops can differ at ~1e-12 precision; numerical columns are validated with rtol=1e-5, atol=1e-4."
+  ],
+  "workloads": [
+    {
+      "workload_id": "W1",
+      "workload_name": "CSV Ingestion & Metadata Stamping",
+      "passed": true,
+      "pandas_rows": 5000,
+      "pyspark_rows": 5000,
+      "schema_columns_match": true,
+      "null_counts_match": true,
+      "duplicate_counts_match": true,
+      "values_match": true,
+      "max_abs_numeric_diff": 0.0,
+      "details": {
+        "pd_columns": [
+          "order_id",
+          "customer_id",
+          "order_status",
+          "order_purchase_timestamp",
+          "order_approved_at",
+          "order_delivered_carrier_date",
+          "order_delivered_customer_date",
+          "order_estimated_delivery_date",
+          "_batch_id",
+          "_source_system"
+        ],
+        "sp_columns": [
+          "order_id",
+          "customer_id",
+          "order_status",
+          "order_purchase_timestamp",
+          "order_approved_at",
+          "order_delivered_carrier_date",
+          "order_delivered_customer_date",
+          "order_estimated_delivery_date",
+          "_batch_id",
+          "_source_system"
+        ],
+        "pd_nulls": {
+          "order_id": 0,
+          "customer_id": 0,
+          "order_status": 0,
+          "order_purchase_timestamp": 0,
+          "order_approved_at": 10,
+          "order_delivered_carrier_date": 78,
+          "order_delivered_customer_date": 142,
+          "order_estimated_delivery_date": 0,
+          "_batch_id": 0,
+          "_source_system": 0
+        },
+        "sp_nulls": {
+          "order_id": 0,
+          "customer_id": 0,
+          "order_status": 0,
+          "order_purchase_timestamp": 0,
+          "order_approved_at": 10,
+          "order_delivered_carrier_date": 78,
+          "order_delivered_customer_date": 142,
+          "order_estimated_delivery_date": 0,
+          "_batch_id": 0,
+          "_source_system": 0
+        },
+        "pd_duplicates": 0,
+        "sp_duplicates": 0,
+        "mismatch_columns": []
+      }
+    },
+    {
+      "workload_id": "W2",
+      "workload_name": "Data Cleaning, Type Casting & Null Handling (order_items)",
+      "passed": true,
+      "pandas_rows": 5000,
+      "pyspark_rows": 5000,
+      "schema_columns_match": true,
+      "null_counts_match": true,
+      "duplicate_counts_match": true,
+      "values_match": true,
+      "max_abs_numeric_diff": 0.0,
+      "details": {
+        "pd_columns": [
+          "order_id",
+          "order_item_id",
+          "product_id",
+          "seller_id",
+          "shipping_limit_date",
+          "price",
+          "freight_value",
+          "total_item_value"
+        ],
+        "sp_columns": [
+          "order_id",
+          "order_item_id",
+          "product_id",
+          "seller_id",
+          "shipping_limit_date",
+          "price",
+          "freight_value",
+          "total_item_value"
+        ],
+        "pd_nulls": {
+          "order_id": 0,
+          "order_item_id": 0,
+          "product_id": 0,
+          "seller_id": 0,
+          "shipping_limit_date": 0,
+          "price": 0,
+          "freight_value": 0,
+          "total_item_value": 0
+        },
+        "sp_nulls": {
+          "order_id": 0,
+          "order_item_id": 0,
+          "product_id": 0,
+          "seller_id": 0,
+          "shipping_limit_date": 0,
+          "price": 0,
+          "freight_value": 0,
+          "total_item_value": 0
+        },
+        "pd_duplicates": 0,
+        "sp_duplicates": 0,
+        "mismatch_columns": []
+      }
+    },
+    {
+      "workload_id": "W3",
+      "workload_name": "Data Quality Checks & Duplicate Detection (deduped order_items)",
+      "passed": true,
+      "pandas_rows": 243,
+      "pyspark_rows": 243,
+      "schema_columns_match": true,
+      "null_counts_match": true,
+      "duplicate_counts_match": true,
+      "values_match": true,
+      "max_abs_numeric_diff": 0.0,
+      "details": {
+        "pd_columns": [
+          "order_id",
+          "order_item_id",
+          "product_id",
+          "seller_id",
+          "shipping_limit_date",
+          "price",
+          "freight_value",
+          "total_item_value"
+        ],
+        "sp_columns": [
+          "order_id",
+          "order_item_id",
+          "product_id",
+          "seller_id",
+          "shipping_limit_date",
+          "price",
+          "freight_value",
+          "total_item_value"
+        ],
+        "pd_nulls": {
+          "order_id": 0,
+          "order_item_id": 0,
+          "product_id": 0,
+          "seller_id": 0,
+          "shipping_limit_date": 0,
+          "price": 0,
+          "freight_value": 0,
+          "total_item_value": 0
+        },
+        "sp_nulls": {
+          "order_id": 0,
+          "order_item_id": 0,
+          "product_id": 0,
+          "seller_id": 0,
+          "shipping_limit_date": 0,
+          "price": 0,
+          "freight_value": 0,
+          "total_item_value": 0
+        },
+        "pd_duplicates": 0,
+        "sp_duplicates": 0,
+        "mismatch_columns": []
+      }
+    },
+    {
+      "workload_id": "W4",
+      "workload_name": "Group-By Aggregations & Financial Rollups (geo_agg exact median & mean)",
+      "passed": true,
+      "pandas_rows": 292,
+      "pyspark_rows": 292,
+      "schema_columns_match": true,
+      "null_counts_match": true,
+      "duplicate_counts_match": true,
+      "values_match": true,
+      "max_abs_numeric_diff": 0.0,
+      "details": {
+        "pd_columns": [
+          "geolocation_zip_code_prefix",
+          "geolocation_city",
+          "geolocation_state",
+          "point_count",
+          "mean_lat",
+          "mean_lng",
+          "median_lat",
+          "median_lng"
+        ],
+        "sp_columns": [
+          "geolocation_zip_code_prefix",
+          "geolocation_city",
+          "geolocation_state",
+          "point_count",
+          "mean_lat",
+          "mean_lng",
+          "median_lat",
+          "median_lng"
+        ],
+        "pd_nulls": {
+          "geolocation_zip_code_prefix": 0,
+          "geolocation_city": 0,
+          "geolocation_state": 0,
+          "point_count": 0,
+          "mean_lat": 0,
+          "mean_lng": 0,
+          "median_lat": 0,
+          "median_lng": 0
+        },
+        "sp_nulls": {
+          "geolocation_zip_code_prefix": 0,
+          "geolocation_city": 0,
+          "geolocation_state": 0,
+          "point_count": 0,
+          "mean_lat": 0,
+          "mean_lng": 0,
+          "median_lat": 0,
+          "median_lng": 0
+        },
+        "pd_duplicates": 0,
+        "sp_duplicates": 0,
+        "mismatch_columns": []
+      }
+    },
+    {
+      "workload_id": "W5",
+      "workload_name": "Silver-to-Gold Star Schema Joins (FactOrders)",
+      "passed": true,
+      "pandas_rows": 5000,
+      "pyspark_rows": 5000,
+      "schema_columns_match": true,
+      "null_counts_match": true,
+      "duplicate_counts_match": true,
+      "values_match": true,
+      "max_abs_numeric_diff": 0.0001,
+      "details": {
+        "pd_columns": [
+          "order_id",
+          "customer_unique_id",
+          "customer_state",
+          "order_status",
+          "delivery_days",
+          "is_late_delivery",
+          "total_items_count",
+          "gross_order_value",
+          "total_freight_value",
+          "total_payment_value",
+          "avg_review_score"
+        ],
+        "sp_columns": [
+          "order_id",
+          "customer_unique_id",
+          "customer_state",
+          "order_status",
+          "delivery_days",
+          "is_late_delivery",
+          "total_items_count",
+          "gross_order_value",
+          "total_freight_value",
+          "total_payment_value",
+          "avg_review_score"
+        ],
+        "pd_nulls": {
+          "order_id": 0,
+          "customer_unique_id": 4739,
+          "customer_state": 4739,
+          "order_status": 0,
+          "delivery_days": 142,
+          "is_late_delivery": 0,
+          "total_items_count": 0,
+          "gross_order_value": 0,
+          "total_freight_value": 0,
+          "total_payment_value": 0,
+          "avg_review_score": 4753
+        },
+        "sp_nulls": {
+          "order_id": 0,
+          "customer_unique_id": 4739,
+          "customer_state": 4739,
+          "order_status": 0,
+          "delivery_days": 142,
+          "is_late_delivery": 0,
+          "total_items_count": 0,
+          "gross_order_value": 0,
+          "total_freight_value": 0,
+          "total_payment_value": 0,
+          "avg_review_score": 4753
+        },
+        "pd_duplicates": 0,
+        "sp_duplicates": 0,
+        "mismatch_columns": []
+      }
+    },
+    {
+      "workload_id": "W6",
+      "workload_name": "SCD Type 2 Change Detection & Gold Analytical Summaries (DimCustomer SCD2 & State Summary)",
+      "passed": true,
+      "pandas_rows": 4992,
+      "pyspark_rows": 4992,
+      "schema_columns_match": true,
+      "null_counts_match": true,
+      "duplicate_counts_match": true,
+      "values_match": true,
+      "max_abs_numeric_diff": 0.0,
+      "details": {
+        "pd_columns": [
+          "customer_unique_id",
+          "customer_id",
+          "customer_zip_code_prefix",
+          "customer_city",
+          "customer_state",
+          "effective_from",
+          "effective_to",
+          "is_current",
+          "record_hash"
+        ],
+        "sp_columns": [
+          "customer_unique_id",
+          "customer_id",
+          "customer_zip_code_prefix",
+          "customer_city",
+          "customer_state",
+          "effective_from",
+          "effective_to",
+          "is_current",
+          "record_hash"
+        ],
+        "pd_nulls": {
+          "customer_unique_id": 0,
+          "customer_id": 0,
+          "customer_zip_code_prefix": 0,
+          "customer_city": 0,
+          "customer_state": 0,
+          "effective_from": 0,
+          "effective_to": 4992,
+          "is_current": 0,
+          "record_hash": 0
+        },
+        "sp_nulls": {
+          "customer_unique_id": 0,
+          "customer_id": 0,
+          "customer_zip_code_prefix": 0,
+          "customer_city": 0,
+          "customer_state": 0,
+          "effective_from": 0,
+          "effective_to": 4992,
+          "is_current": 0,
+          "record_hash": 0
+        },
+        "pd_duplicates": 0,
+        "sp_duplicates": 0,
+        "mismatch_columns": []
+      }
+    }
+  ]
+}

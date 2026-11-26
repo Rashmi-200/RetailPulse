@@ -27,7 +27,10 @@ def get_logger(name: str) -> logging.Logger:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
-    file_handler = logging.FileHandler(log_dir / "retailpulse.log", encoding="utf-8")
+    try:
+        file_handler = logging.FileHandler(log_dir / "retailpulse.log", encoding="utf-8")
+    except (PermissionError, OSError):
+        file_handler = logging.FileHandler("/tmp/retailpulse.log", encoding="utf-8")
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
 

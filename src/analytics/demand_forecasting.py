@@ -32,7 +32,11 @@ class RetailDemandForecaster:
     def __init__(self, engine: Engine, model_dir: str = "models", min_active_daily_orders: int = 20):
         self.engine = engine
         self.model_dir = Path(model_dir)
-        self.model_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.model_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            self.model_dir = Path("/tmp/retailpulse_models")
+            self.model_dir.mkdir(parents=True, exist_ok=True)
         self.model_path = self.model_dir / "demand_forecaster.joblib"
         self.min_active_daily_orders = min_active_daily_orders
 
@@ -46,17 +50,21 @@ class RetailDemandForecaster:
                 CASE WHEN d.is_weekend THEN 1 ELSE 0 END AS is_weekend,
                 d.month,
                 COUNT(DISTINCT f.order_id) AS daily_orders,
-                COALESCE(SUM(f.gross_order_value), 0.0) AS daily_revenue
+                COALESCE(SUM(f.{fact_rev_col}), 0.0) AS daily_revenue
             FROM gold.dimdate d
             LEFT JOIN gold.factorders f
-                ON d.date_key = f.order_date_key
+                ON d.{dim_date_col} = f.{fact_date_col}
                AND f.order_status NOT IN ('canceled', 'unavailable')
             GROUP BY d.full_date, d.day_of_week, d.is_weekend, d.month
             ORDER BY d.full_date ASC;
             """
         )
         with self.engine.connect() as conn:
-            df = pd.read_sql(query, conn)
+            cols = {(r[0], r[1]) for r in conn.execute(text("SELECT table_name, column_name FROM information_schema.columns WHERE table_schema = 'gold' AND table_name IN ('dimdate', 'factorders')")).fetchall()}
+            dim_date_col = "date_sk" if ("dimdate", "date_sk") in cols else "date_key"
+            fact_date_col = "order_date_sk" if ("factorders", "order_date_sk") in cols else "order_date_key"
+            fact_rev_col = "total_order_value" if ("factorders", "total_order_value") in cols else "gross_order_value"
+            df = pd.read_sql(text(query.text.format(fact_rev_col=fact_rev_col, dim_date_col=dim_date_col, fact_date_col=fact_date_col)), conn)
 
         df["order_date"] = pd.to_datetime(df["order_date"])
         # Derive complete operational window dynamically (exclude sparse ramp-up and incomplete dataset-end cutoff tail)

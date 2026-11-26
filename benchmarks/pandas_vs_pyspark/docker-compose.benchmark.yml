@@ -1,0 +1,21 @@
+name: retailpulse-benchmark-isolated
+
+services:
+  pandas-pyspark-bench:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    image: retailpulse-pandas-pyspark-bench:3.5.3
+    container_name: retailpulse-bench-runner
+    working_dir: /workspace/benchmarks/pandas_vs_pyspark
+    cpus: "2.0"
+    mem_limit: 5g
+    memswap_limit: 5g
+    shm_size: 1g
+    environment:
+      PYTHONUNBUFFERED: "1"
+      SPARK_LOCAL_IP: "127.0.0.1"
+    volumes:
+      - ../../data/raw:/workspace/data/raw:ro
+      - ./:/workspace/benchmarks/pandas_vs_pyspark:rw
+    restart: "no"

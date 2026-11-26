@@ -1,0 +1,66 @@
+name: RetailPulse CI
+
+on:
+  push:
+    branches: [ main, dev-1 ]
+  pull_request:
+    branches: [ main, dev-1 ]
+
+env:
+  DB_HOST: localhost
+  DB_PORT: "5432"
+  DB_NAME: retailpulse_ci_test
+  DB_USER: postgres
+  DB_PASSWORD: ci_isolated_ephemeral_password
+
+jobs:
+  pytest-verification:
+    name: Python 3.11 Unit & Integration Verification
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: retailpulse_ci_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci_isolated_ephemeral_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d retailpulse_ci_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies reproducibly
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Bootstrap isolated CI schema and ephemeral lakehouse fixtures
+        env:
+          PYTHONPATH: .
+        run: |
+          python scripts/bootstrap_ci_env.py
+
+      - name: Run full Pytest suite
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/ -v --tb=short -ra
+
+      - name: Clean up ephemeral CI artifacts
+        if: always()
+        run: |
+          rm -rf data/bronze data/silver data/gold data/quarantine logs/*.log

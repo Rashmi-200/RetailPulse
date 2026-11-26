@@ -1,0 +1,112 @@
+{
+  "scales": [
+    {
+      "scale": "1x",
+      "factor": 1,
+      "status": "GENERATED",
+      "generation_sec": 7.795,
+      "total_size_mb": 120.34,
+      "row_counts": {
+        "category_translation": 71,
+        "orders": 99441,
+        "order_items": 112650,
+        "payments": 103886,
+        "reviews": 104719,
+        "customers": 99441,
+        "products": 32951,
+        "sellers": 3095,
+        "geolocation": 1000163
+      },
+      "referential_integrity_verified": true,
+      "preflight": {
+        "passed": true,
+        "total_ram_mb": 3917.75,
+        "free_ram_mb": 3233.04,
+        "required_min_free_ram_mb": 1500.0,
+        "free_disk_gb": 142.91,
+        "required_min_free_disk_gb": 1.0
+      }
+    },
+    {
+      "scale": "5x",
+      "factor": 5,
+      "status": "GENERATED",
+      "generation_sec": 61.362,
+      "total_size_mb": 530.94,
+      "row_counts": {
+        "category_translation": 71,
+        "orders": 497205,
+        "order_items": 563250,
+        "payments": 519430,
+        "reviews": 496120,
+        "customers": 497205,
+        "products": 164755,
+        "sellers": 15475,
+        "geolocation": 5000815
+      },
+      "referential_integrity_verified": true,
+      "preflight": {
+        "passed": true,
+        "total_ram_mb": 3917.75,
+        "free_ram_mb": 3232.27,
+        "required_min_free_ram_mb": 1800.0,
+        "free_disk_gb": 142.8,
+        "required_min_free_disk_gb": 2.0
+      }
+    },
+    {
+      "scale": "10x",
+      "factor": 10,
+      "status": "GENERATED",
+      "generation_sec": 121.844,
+      "total_size_mb": 1049.08,
+      "row_counts": {
+        "category_translation": 71,
+        "orders": 994410,
+        "order_items": 1126500,
+        "payments": 1038860,
+        "reviews": 992240,
+        "customers": 994410,
+        "products": 329510,
+        "sellers": 30950,
+        "geolocation": 10001630
+      },
+      "referential_integrity_verified": true,
+      "preflight": {
+        "passed": true,
+        "total_ram_mb": 3917.75,
+        "free_ram_mb": 3077.91,
+        "required_min_free_ram_mb": 2200.0,
+        "free_disk_gb": 142.28,
+        "required_min_free_disk_gb": 4.0
+      }
+    },
+    {
+      "scale": "20x",
+      "factor": 20,
+      "status": "GENERATED",
+      "generation_sec": 262.587,
+      "total_size_mb": 2095.59,
+      "row_counts": {
+        "category_translation": 71,
+        "orders": 1988820,
+        "order_items": 2253000,
+        "payments": 2077720,
+        "reviews": 1984480,
+        "customers": 1988820,
+        "products": 659020,
+        "sellers": 61900,
+        "geolocation": 20003260
+      },
+      "referential_integrity_verified": true,
+      "preflight": {
+        "passed": true,
+        "total_ram_mb": 3917.75,
+        "free_ram_mb": 3019.35,
+        "required_min_free_ram_mb": 2800.0,
+        "free_disk_gb": 141.25,
+        "required_min_free_disk_gb": 8.0
+      }
+    }
+  ]
+}

@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 
 
 class RootCauseAnalyzer:
-    """Evidence-grounded diagnostic analyzer correlating 7 pipeline telemetry sources without fabricating unsupported claims."""
+    """Evidence-grounded diagnostic analyzer correlating 8 PostgreSQL telemetry tables without fabricating unsupported claims."""
 
     def __init__(self, engine: Engine):
         self.engine = engine
